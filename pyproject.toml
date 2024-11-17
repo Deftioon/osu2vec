@@ -1,0 +1,40 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = ["osu2vec"]
+package-dir = { "" = "src" }
+
+[project]
+name = "osu2vec"
+version = "0.0.1"
+authors = [
+  {name="Jake Lu", email="jylu1205@outlook.com"},
+]
+description = "A package for osu! beatmap parsing, categorizing, and embedding."
+readme = "README.md"
+requires-python = ">=3.11"
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Programming Language :: Python :: 3.11",
+    "License :: OSI Approved :: BSD License",
+    "Operating System :: OS Independent",
+    "Environment :: GPU :: NVIDIA CUDA :: 11",
+    "Environment :: GPU :: NVIDIA CUDA :: 12",
+    "Natural Language :: English",
+]
+dependencies=[
+    "numpy",
+    "pandas",
+    "matplotlib",
+    "seaborn",
+    "torch",
+
+]
+license = { file = "LICENSE" }
+keywords = ["quantum", "circuit", "simulation", "benchmarking"]
+
+[project.urls]
+Homepage = "https://github.com/Deftioon/osu2vec"
+Issues = "https://github.com/Deftioon/osu2vec/issues"
