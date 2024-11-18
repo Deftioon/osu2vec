@@ -1,7 +1,7 @@
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-import matplotlib.animation as animation
+import seaborn as sns
 
 class HitCircle:
     def __init__(self, x: int, y: int, time: int):
@@ -25,14 +25,19 @@ class Beatmap:
             self.file = file.read()
         self.file_path = file_path
         self.file_type = file_type
+        self.metadata = None
         self.stats = self.split_file()
         self.difficulty = self.stats["difficulty"]
 
-        self.dataframe = pd.DataFrame(columns=["time", "x", "y", "circle", "slider", "cursor_velocity", "distance","angle_cosine", "vector_x", "vector_y"])
+        self.dataframe = pd.DataFrame(columns=["time", "x", "y", "circle", "slider", "slider_length", "cursor_velocity", "distance","angle_cosine", "vector_x", "vector_y"])
 
         self.parse()
 
+        self.normalized_dataframe = self.dataframe.copy()
+        columns_to_normalize = self.normalized_dataframe.columns.difference(['angle_cosine'])
+        self.normalized_dataframe[columns_to_normalize] = 2 * (self.normalized_dataframe[columns_to_normalize] - self.normalized_dataframe[columns_to_normalize].min()) / (self.normalized_dataframe[columns_to_normalize].max() - self.normalized_dataframe[columns_to_normalize].min()) - 1
         
+
 
     def split_file(self):
         """
@@ -51,6 +56,8 @@ class Beatmap:
         """
         file = self.file.split("\n")
         file = [line for line in file if line.strip()]  # Remove empty lines
+
+        metadata_label_idx = file.index("[Metadata]")
         difficulty_label_idx = file.index("[Difficulty]")
         events_label_idx = file.index("[Events]")
         timing_points_label_idx = file.index("[TimingPoints]")
@@ -66,6 +73,12 @@ class Beatmap:
 
         timing_points_data = file[timing_points_label_idx+1:colours_label_idx]
         timing_points_data = [x.split(",") for x in timing_points_data]
+
+        metadata_data = file[metadata_label_idx+1:difficulty_label_idx]
+        metadata_data = [x.split(":") for x in metadata_data]
+        metadata_data = {x[0]: x[1] for x in metadata_data}
+
+        self.metadata = metadata_data
 
         output = {
             "difficulty": difficulty_data,
@@ -88,12 +101,14 @@ class Beatmap:
             x = hit_object[0]
             y = hit_object[1]
 
-            if len(hit_object) == 6:
+            if len(hit_object) < 11:
                 circle = 1
                 slider = 0
+                slider_length = 0
             else:
                 circle = 0
                 slider = 1
+                slider_length = hit_object[7]
 
             if i == 0:
                 distance = 0
@@ -132,6 +147,7 @@ class Beatmap:
                 "y": y,
                 "circle": circle,
                 "slider": slider,
+                "slider_length": slider_length,
                 "cursor_velocity": cursor_velocity,
                 "distance": distance,
                 "angle_cosine": angle_cosine,
@@ -155,6 +171,20 @@ class Beatmap:
 
         # Convert all columns to integers
         self.dataframe = self.dataframe.astype(float)
+
+    def heatmap(self, show=True, save=True):
+        normalized_df = self.dataframe.copy()
+        columns_to_normalize = normalized_df.columns.difference(['angle_cosine'])
+        normalized_df[columns_to_normalize] = 2 * (normalized_df[columns_to_normalize] - normalized_df[columns_to_normalize].min()) / (normalized_df[columns_to_normalize].max() - normalized_df[columns_to_normalize].min()) - 1
+        plt.figure(figsize=(10, 8))
+        sns.heatmap(normalized_df, cmap='coolwarm', cbar=True)
+        plt.title(f"Heatmap of Beatmap {self.metadata['Title']} ({self.metadata['Version']})")
+        
+        if save:
+            plt.savefig(f"{self.metadata['Title'].replace(' ', '_')} ({self.metadata['Version'].replace(' ', '_')}).png")
+        if show:
+            plt.show()
+
 
     def __repr__(self):
         return f"Beatmap({self.file_path})"
