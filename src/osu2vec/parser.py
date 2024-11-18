@@ -1,5 +1,23 @@
 import pandas as pd
 import numpy as np
+import matplotlib.pyplot as plt
+import matplotlib.animation as animation
+
+class HitCircle:
+    def __init__(self, x: int, y: int, time: int):
+        self.x = x
+        self.y = y
+        self.time = time
+
+class Slider:
+    def __init__(self, x: int, y: int, time: int, points: list, slides: int, length: int, duration: int):
+        self.x = x
+        self.y = y
+        self.time = time
+        self.points = points
+        self.slides = slides
+        self.length = length
+        self.duration = duration
 
 class Beatmap:
     def __init__(self, file_path: str, file_type: str=".osu"):
@@ -10,7 +28,11 @@ class Beatmap:
         self.stats = self.split_file()
         self.difficulty = self.stats["difficulty"]
 
-        self.dataframe = pd.DataFrame(columns=["time", "x", "y", "circle", "slider"])
+        self.dataframe = pd.DataFrame(columns=["time", "x", "y", "circle", "slider", "cursor_velocity", "distance","angle_cosine", "vector_x", "vector_y"])
+
+        self.parse()
+
+        
 
     def split_file(self):
         """
@@ -54,10 +76,73 @@ class Beatmap:
         return output
 
     def parse(self):
+        """
+        Creates a dataframe from the hit_objects data.
+        """
         split_data = self.split_file()
         timings = split_data["timing_points"]
         hit_objects = split_data["hit_objects"]
-        return split_data
+
+        for i, hit_object in enumerate(hit_objects):
+            time = hit_object[2]
+            x = hit_object[0]
+            y = hit_object[1]
+
+            if len(hit_object) == 6:
+                circle = 1
+                slider = 0
+            else:
+                circle = 0
+                slider = 1
+
+            if i == 0:
+                distance = 0
+                time_diff = 0
+                angle_cosine = 0
+                cursor_velocity = 0
+                vector_x = 0
+                vector_y = 0
+            else:
+                prev_x = int(self.dataframe.iloc[-1]["x"])
+                prev_y = int(self.dataframe.iloc[-1]["y"])
+                prev_time = int(self.dataframe.iloc[-1]["time"])
+
+                time_diff = int(time) - prev_time
+                distance = np.sqrt((int(x) - prev_x) ** 2 + (int(y) - prev_y) ** 2)
+                angle_cosine = (int(x) - prev_x) / distance if distance != 0 else 0
+                cursor_velocity = distance / time_diff if time_diff != 0 else 0
+                vector_x = int(x) - prev_x
+                vector_y = int(y) - prev_y
+
+            new_row = pd.DataFrame([{
+                "time": time,
+                "x": x,
+                "y": y,
+                "circle": circle,
+                "slider": slider,
+                "cursor_velocity": cursor_velocity,
+                "distance": distance,
+                "angle_cosine": angle_cosine,
+                "vector_x": vector_x,
+                "vector_y": vector_y
+            }])
+            self.dataframe = pd.concat([self.dataframe, new_row], ignore_index=True)
+
+        # # Create a complete dataframe with all milliseconds from 1 to 500000
+        # complete_time_range = pd.DataFrame({"time": np.arange(1, 500001)})
+
+        # # Ensure 'time' column in both dataframes is of the same type (int)
+        # self.dataframe["time"] = self.dataframe["time"].astype(int)
+        # complete_time_range["time"] = complete_time_range["time"].astype(int)
+
+        # # Merge the complete time range with the existing dataframe
+        # self.dataframe = pd.merge(complete_time_range, self.dataframe, on="time", how="left")
+
+        # # Fill NaN values with 0 for x, y, circle, and slider columns
+        # self.dataframe[["x", "y", "circle", "slider"]] = self.dataframe[["x", "y", "circle", "slider"]].fillna(0)
+
+        # Convert all columns to integers
+        self.dataframe = self.dataframe.astype(float)
 
     def __repr__(self):
         return f"Beatmap({self.file_path})"
