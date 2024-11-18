@@ -109,10 +109,22 @@ class Beatmap:
 
                 time_diff = int(time) - prev_time
                 distance = np.sqrt((int(x) - prev_x) ** 2 + (int(y) - prev_y) ** 2)
-                angle_cosine = (int(x) - prev_x) / distance if distance != 0 else 0
                 cursor_velocity = distance / time_diff if time_diff != 0 else 0
                 vector_x = int(x) - prev_x
                 vector_y = int(y) - prev_y
+                
+                if i == 1:
+                    angle_cosine = 0
+                else:
+                    angle_cosine = (int(x) - prev_x) / distance if distance != 0 else 0
+                    prev_vector_x = int(self.dataframe.iloc[-1]["vector_x"])
+                    prev_vector_y = int(self.dataframe.iloc[-1]["vector_y"])
+                    prev_distance = np.sqrt(prev_vector_x ** 2 + prev_vector_y ** 2)
+                    
+                    if prev_distance != 0 and distance != 0:
+                        angle_cosine = (prev_vector_x * vector_x + prev_vector_y * vector_y) / (prev_distance * distance)
+                    else:
+                        angle_cosine = 0
 
             new_row = pd.DataFrame([{
                 "time": time,
