@@ -143,6 +143,7 @@ class Beatmap:
 
             new_row = pd.DataFrame([{
                 "time": time,
+                "time_diff": time_diff,
                 "x": x,
                 "y": y,
                 "circle": circle,
