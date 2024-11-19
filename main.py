@@ -6,6 +6,8 @@ N = 4096
 
 beatmap1 = parser.Beatmap("data/map1.osu")
 
+beatmap1.heatmap()
+
 hashed_data1 = data.hash_beatmap(beatmap1, N)
 
 beatmap2 = parser.Beatmap("data/map2.osu")
