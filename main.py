@@ -6,17 +6,11 @@ import numpy as np
 
 N = 512
 
-beatmap1 = parser.Beatmap("data/map1.osu", correction=True)
+beatmap1 = parser.Beatmap("data/map4.osu", correction=True)
 
-print(beatmap1.dataframe.head())
+beatmap2 = parser.Beatmap("data/map7.osu", correction=True)
 
-osu2vec = model.Osu2Vec()
-osu2vec.load_list(["data/map7.osu"], correction=True)
-print(osu2vec.linear_layers)
-print(osu2vec.binned_data.shape)
-print(osu2vec.hashed_data.shape)
-
-output = osu2vec.forward(osu2vec.binned_data)
-
-print(output)
-print(output.shape)
+similarities = data.beatmap_similarity(beatmap1, beatmap2)
+average_similarity = np.mean(list(similarities.values()))
+print("Average Similarity:", average_similarity)
+print("Similarities:", similarities)
