@@ -2,6 +2,7 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
+from osu2vec import data
 
 class HitCircle:
     def __init__(self, x: int, y: int, time: int):

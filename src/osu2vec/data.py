@@ -1,4 +1,3 @@
-from src.osu2vec import parser
 import hashlib
 import numpy as np
 from tqdm import tqdm
@@ -21,31 +20,31 @@ def one_bit_output_hashing(item):
     hashed_item = int(hashed_item[0], 16) % 2
     return hashed_item
 
-def hashing_vectorizer(data, N):
+def hashing_vectorizer(data, N, correction=False):
     hashed_data = {i: 0 for i in range(N)}
     for idx, item in enumerate(data):
         hashed_item = int(hashlib.md5(str(item).encode()).hexdigest(), 16)
         index = hashed_item % N
 
-        if one_bit_output_hashing(item) == 1:
-            hashed_data[index] += 1
-        else:
+        if one_bit_output_hashing(item) != 1 and correction == True:
             hashed_data[index] -= 1
+        else:
+            hashed_data[index] += 1
     
     hashed_data = [x[1] for x in sorted(hashed_data.items(), key=lambda x: x[0])]
     
     return np.array(hashed_data)
 
-def hash_beatmap(beatmap, N):
+def hash_beatmap(beatmap, N, correction=False):
     hashed_data = {
-        "time": hashing_vectorizer(beatmap.dataframe["time"], N),
-        "time_diff": hashing_vectorizer(beatmap.dataframe["time_diff"], N),
-        "slider_length": hashing_vectorizer(beatmap.dataframe["slider_length"], N),
-        "cursor_velocity": hashing_vectorizer(beatmap.dataframe["cursor_velocity"], N),
-        "distance": hashing_vectorizer(beatmap.dataframe["distance"], N),
-        "angle_cosine": hashing_vectorizer(beatmap.dataframe["angle_cosine"], N),
-        "vector_x": hashing_vectorizer(beatmap.dataframe["vector_x"], N),
-        "vector_y": hashing_vectorizer(beatmap.dataframe["vector_y"], N),
+        "time": hashing_vectorizer(beatmap.dataframe["time"], N, correction),
+        "time_diff": hashing_vectorizer(beatmap.dataframe["time_diff"], N, correction),
+        "slider_length": hashing_vectorizer(beatmap.dataframe["slider_length"], N, correction),
+        "cursor_velocity": hashing_vectorizer(beatmap.dataframe["cursor_velocity"], N, correction),
+        "distance": hashing_vectorizer(beatmap.dataframe["distance"], N, correction),
+        "angle_cosine": hashing_vectorizer(beatmap.dataframe["angle_cosine"], N, correction),
+        "vector_x": hashing_vectorizer(beatmap.dataframe["vector_x"], N, correction),
+        "vector_y": hashing_vectorizer(beatmap.dataframe["vector_y"], N, correction),
     }
     hashed_data_array = np.array(list(hashed_data.values())).T
     return hashed_data_array

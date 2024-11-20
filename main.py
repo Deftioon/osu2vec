@@ -1,18 +1,10 @@
-from src.osu2vec import parser
-from src.osu2vec import data
+from src.osu2vec import data, parser
+import matplotlib.pyplot as plt
+import seaborn as sns
 import numpy as np
 
-N = 4096
+N = 100
 
-beatmap1 = parser.Beatmap("data/map1.osu")
+beatmap1 = parser.Beatmap("data/map7.osu")
 
-beatmap1.heatmap()
-
-hashed_data1 = data.hash_beatmap(beatmap1, N)
-
-beatmap2 = parser.Beatmap("data/map2.osu")
-
-hashed_data2 = data.hash_beatmap(beatmap2, N)
-
-cosine_similarities = data.beatmap_similarity(beatmap1, beatmap2, N)
-print(cosine_similarities)
+hashed_data1 = data.hash_beatmap(beatmap1, N, correction=True)
