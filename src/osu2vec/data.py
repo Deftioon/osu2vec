@@ -1,14 +1,14 @@
 import hashlib
 import numpy as np
+import pandas as pd
 from tqdm import tqdm
 from sklearn.metrics.pairwise import cosine_similarity
 
 
-# Placeholder code
+
 def feature_hashing(data):
     hashed_data = []
     for item in data:
-        # Convert item to string and hash it
         hashed_item = hashlib.md5(str(item).encode()).hexdigest()
         hashed_data.append(hashed_item)
     return hashed_data
@@ -49,9 +49,40 @@ def hash_beatmap(beatmap, N, correction=False):
     hashed_data_array = np.array(list(hashed_data.values())).T
     return hashed_data_array
 
-def beatmap_similarity(beatmap1, beatmap2, N):
-    hashed_data1 = hash_beatmap(beatmap1, N)
-    hashed_data2 = hash_beatmap(beatmap2, N)
+def percentile_binning(data, label="time", N = 512):
+    data = data[["time", "time_diff", "slider_length", "cursor_velocity", "distance", "angle_cosine", "vector_x", "vector_y"]]
+    data = data.sort_values(label)
+    data["bin"] = pd.qcut(data[label], N, labels=False)
+    
+    slices = []
+    max_size = 0  # variable to store the maximum size of the slices
+    
+    for i in range(N):
+        bin_slice = data[data["bin"] == i]
+        bin_slice = bin_slice.drop(columns=["bin"])
+        slices.append(np.array(bin_slice))
+        max_size = max(max_size, len(bin_slice))  # update the maximum size
+    
+    # pad all slices to the same size
+    for i in range(N):
+        bin_slice = slices[i]
+        if len(bin_slice) < max_size:
+            padding = max_size - len(bin_slice)
+            padded_slice = np.pad(bin_slice, ((0, padding), (0, 0)), mode='constant')
+            slices[i] = padded_slice
+    
+    # average each column along each bin
+    averaged_slices = []
+    for i in range(N):
+        bin_slice = slices[i]
+        averaged_slice = np.mean(bin_slice, axis=0)
+        averaged_slices.append(averaged_slice)
+    
+    return np.array(averaged_slices)
+
+def beatmap_similarity(beatmap1, beatmap2):
+    hashed_data1 = beatmap1.hashed_data
+    hashed_data2 = beatmap2.hashed_data
     features = ["time", "time_diff", "slider_length", "cursor_velocity", "distance", "angle_cosine", "vector_x", "vector_y"]
     cosine_similarities = {}
 

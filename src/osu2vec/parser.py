@@ -2,7 +2,7 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
-from osu2vec import data
+from src.osu2vec import data
 
 class HitCircle:
     def __init__(self, x: int, y: int, time: int):
@@ -21,7 +21,7 @@ class Slider:
         self.duration = duration
 
 class Beatmap:
-    def __init__(self, file_path: str, file_type: str=".osu"):
+    def __init__(self, file_path: str, file_type: str=".osu", hashing_size=4096, binning_size=500, correction=False):
         with open(file_path, "r", encoding="utf-8") as file:
             self.file = file.read()
         self.file_path = file_path
@@ -37,6 +37,10 @@ class Beatmap:
         self.normalized_dataframe = self.dataframe.copy()
         columns_to_normalize = self.normalized_dataframe.columns.difference(['angle_cosine'])
         self.normalized_dataframe[columns_to_normalize] = 2 * (self.normalized_dataframe[columns_to_normalize] - self.normalized_dataframe[columns_to_normalize].min()) / (self.normalized_dataframe[columns_to_normalize].max() - self.normalized_dataframe[columns_to_normalize].min()) - 1
+
+        self.hashed_data = data.hash_beatmap(self, hashing_size, correction=correction)
+
+        self.binned_data = data.percentile_binning(self.dataframe, N=binning_size)
         
 
 
