@@ -29,7 +29,7 @@ class PositionalEncoding(nn.Module):
         return x
 
 class Osu2Vec(nn.Module):
-    def __init__(self, hashing_size: int=512, embedding_size: int = 512, vector_size: int=256, num_layers=6, num_heads=8, feature_size=8):
+    def __init__(self, hashing_size: int=512, embedding_size: int = 512, vector_size: int=256, num_layers=6, num_heads=8, feature_size=8, hidden_sizes=[512, 256, 128, 64, 128]):
         super(Osu2Vec, self).__init__()
         self.hashing_size = hashing_size
         self.embedding_size = embedding_size
@@ -47,8 +47,11 @@ class Osu2Vec(nn.Module):
             ) for _ in range(feature_size)
         ])
 
-        self.fc1 = nn.Linear(self.embedding_size * feature_size, self.vector_size)
         self.relu = nn.ReLU()
+        self.linear_layers = nn.ModuleList([
+            nn.Linear(self.embedding_size * feature_size, hidden_sizes[0]) if i == 0 else nn.Linear(hidden_sizes[i-1], hidden_sizes[i]) for i in range(len(hidden_sizes))
+        ])
+        self.last_layer = nn.Linear(hidden_sizes[-1], self.vector_size)
 
     def load(self, beatmaps: list[parser.Beatmap]):
         print("Loading beatmaps...")
@@ -127,9 +130,13 @@ class Osu2Vec(nn.Module):
         
         concatenated_output = torch.cat(outputs, dim=2) # shape: (batch_size, seq_len, embedding_size * num_features)
         concatenated_output = concatenated_output.mean(dim=1) # shape: (batch_size, embedding_size * num_features)
-        output = self.fc1(concatenated_output)
-        output = self.relu(output)
+        
+        for i, layer in enumerate(self.linear_layers):
+            concatenated_output = layer(concatenated_output)
+            concatenated_output = self.relu(concatenated_output)
 
+        output = self.last_layer(concatenated_output)
+        
         return output
 
     def save(self, path: str):
