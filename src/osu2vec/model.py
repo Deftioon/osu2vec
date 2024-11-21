@@ -12,6 +12,7 @@ from tqdm import tqdm
 import torch
 from torch import nn
 from torch import optim
+import torch.nn.functional as tf
 
 class PositionalEncoding(nn.Module):
     def __init__(self, d_model, max_len=512):
@@ -28,6 +29,60 @@ class PositionalEncoding(nn.Module):
         x = x + self.pe[:x.size(0), :]
         return x
 
+class GMM(nn.Module):
+    def __init__(self, num_components, num_features):
+        super(GMM, self).__init__()
+        self.num_components = num_components
+        self.num_features = num_features
+        self.means = nn.Parameter(torch.randn(num_components, num_features))
+        self.log_vars = nn.Parameter(torch.randn(num_components, num_features))
+        self.weights = nn.Parameter(torch.randn(num_components))
+    
+    def forward(self, x):
+        x = x.unsqueeze(1).expand(-1, self.num_components, -1) # shape: (batch_size, num_components, num_features)
+        means = self.means.unsqueeze(0).expand(x.shape[0], -1, -1)
+        log_vars = self.log_vars.unsqueeze(0).expand(x.shape[0], -1, -1)
+        weights = self.weights.unsqueeze(0).expand(x.shape[0], -1)
+        x = -0.5 * (log_vars + (x - means) ** 2 / (2 * torch.exp(log_vars)))
+        x = torch.sum(x, dim=2) + torch.log(weights)
+        return x
+    
+    def sample(self, num_samples):
+        samples = torch.randn(num_samples, self.num_features)
+        samples = samples.unsqueeze(1).expand(-1, self.num_components, -1)
+        means = self.means.unsqueeze(0).expand(num_samples, -1, -1)
+        log_vars = self.log_vars.unsqueeze(0).expand(num_samples, -1, -1)
+        weights = self.weights.unsqueeze(0).expand(num_samples, -1)
+        samples = -0.5 * (log_vars + (samples - means) ** 2 / (2 * torch.exp(log_vars)))
+        samples = torch.sum(samples, dim=2) + torch.log(weights)
+        samples = torch.argmax(samples, dim=1)
+        return samples
+    
+class CosineSimilarity(nn.Module):
+    def __init__(self):
+        super(CosineSimilarity, self).__init__()
+
+    def forward(self, x):
+        x = torch.tensor(x, dtype=torch.float32)
+        
+        N, D, F = x.shape
+
+        cosine_similarities = torch.zeros(F, dtype=torch.float32)
+
+        for i in range(F):
+            feature_vectors = x[:, :, i]
+            similarity_matrix = tf.cosine_similarity(feature_vectors.unsqueeze(1), feature_vectors.unsqueeze(0), dim=2)
+
+            upper_triangle_indices = torch.triu_indices(N, N, offset=1)
+            upper_triangle_similarities = similarity_matrix[upper_triangle_indices[0], upper_triangle_indices[1]]
+            cosine_similarities[i] = upper_triangle_similarities.mean()
+        
+        normalized_similarities = cosine_similarities**2
+        log_likelihoods = torch.log(normalized_similarities)/2
+        
+        
+        return log_likelihoods
+
 class Osu2Vec(nn.Module):
     def __init__(self, hashing_size: int=512, embedding_size: int = 512, vector_size: int=256, num_layers=6, num_heads=8, feature_size=8, hidden_sizes=[512, 256, 128, 64, 128]):
         super(Osu2Vec, self).__init__()
@@ -37,6 +92,8 @@ class Osu2Vec(nn.Module):
 
         self.hashed_data = np.array([])
         self.binned_data = np.array([])
+
+        self.beatmap_log_likelihoods = np.array([])
 
         self.positional_encoding = PositionalEncoding(self.embedding_size)
         
@@ -52,6 +109,10 @@ class Osu2Vec(nn.Module):
             nn.Linear(self.embedding_size * feature_size, hidden_sizes[0]) if i == 0 else nn.Linear(hidden_sizes[i-1], hidden_sizes[i]) for i in range(len(hidden_sizes))
         ])
         self.last_layer = nn.Linear(hidden_sizes[-1], self.vector_size)
+
+        self.GMM = GMM(8, self.vector_size)
+
+        
 
     def load(self, beatmaps: list[parser.Beatmap]):
         print("Loading beatmaps...")
@@ -75,7 +136,7 @@ class Osu2Vec(nn.Module):
         
         self.hashed_data = np.array(output_hashed)
         self.binned_data = np.array(output_binned)
-    
+
     def load_hashed(self, beatmaps: list[parser.Beatmap]):
         print("Loading beatmaps...")
         output = list(self.hashed_data)
@@ -136,8 +197,10 @@ class Osu2Vec(nn.Module):
             concatenated_output = self.relu(concatenated_output)
 
         output = self.last_layer(concatenated_output)
-        
-        return output
+
+        GMM_output = self.GMM(output)
+
+        return GMM_output
 
     def save(self, path: str):
         pass

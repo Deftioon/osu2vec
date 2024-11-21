@@ -85,6 +85,7 @@ def beatmap_similarity(beatmap1, beatmap2):
     hashed_data2 = beatmap2.hashed_data
     features = ["time", "time_diff", "slider_length", "cursor_velocity", "distance", "angle_cosine", "vector_x", "vector_y"]
     cosine_similarities = {}
+    log_likelihoods = {}
 
     for column in range(hashed_data1.shape[1]):
         vector1 = hashed_data1[:, column].reshape(1, -1)
@@ -92,4 +93,10 @@ def beatmap_similarity(beatmap1, beatmap2):
         similarity = cosine_similarity(vector1, vector2)
         cosine_similarities[features[column]] = similarity[0][0]
 
-    return cosine_similarities
+        scaled_similarity = (similarity + 1) / 2
+        scaled_similarity = np.clip(scaled_similarity, 1e-10, 1.0)
+        log_likelihood = np.log(scaled_similarity)
+
+        log_likelihoods[features[column]] = log_likelihood[0][0]
+
+    return cosine_similarities, log_likelihoods
