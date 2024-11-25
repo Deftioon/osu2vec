@@ -16,10 +16,5 @@ print(osu2vec.linear_layers)
 print(osu2vec.binned_data.shape)
 print(osu2vec.hashed_data.shape)
 
-output = osu2vec.forward(osu2vec.binned_data)
-
-print(output)
-print(output.shape)
-
-similarities = model.CosineSimilarity()
-print(similarities(osu2vec.binned_data))
+log_likelihoods, loss = osu2vec.one_pass_loss(osu2vec.binned_data)
+print(loss)

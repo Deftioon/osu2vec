@@ -73,7 +73,7 @@ class CosineSimilarity(nn.Module):
             feature_vectors = x[:, :, i]
             similarity_matrix = tf.cosine_similarity(feature_vectors.unsqueeze(1), feature_vectors.unsqueeze(0), dim=2)
 
-            upper_triangle_indices = torch.triu_indices(N, N, offset=1)
+            upper_triangle_indices = torch.triu_in  dices(N, N, offset=1)
             upper_triangle_similarities = similarity_matrix[upper_triangle_indices[0], upper_triangle_indices[1]]
             cosine_similarities[i] = upper_triangle_similarities.mean()
         
@@ -82,6 +82,10 @@ class CosineSimilarity(nn.Module):
         
         
         return log_likelihoods
+
+def loss(x, y):
+    criterion = nn.MSELoss()
+    return criterion(x, y)
 
 class Osu2Vec(nn.Module):
     def __init__(self, hashing_size: int=512, embedding_size: int = 512, vector_size: int=256, num_layers=6, num_heads=8, feature_size=8, hidden_sizes=[512, 256, 128, 64, 128]):
@@ -200,7 +204,14 @@ class Osu2Vec(nn.Module):
 
         GMM_output = self.GMM(output)
 
+        GMM_output[torch.isnan(GMM_output)] = -1e10
+
         return GMM_output
+
+    def one_pass_loss(self, src):
+        GMM_log_likelihoods = self.forward(src)
+        print(torch.mean(GMM_log_likelihoods, dim=0))
+        return GMM_log_likelihoods, loss(GMM_log_likelihoods, src)
 
     def save(self, path: str):
         pass
